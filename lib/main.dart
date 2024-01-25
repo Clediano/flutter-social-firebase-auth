@@ -6,11 +6,7 @@ import 'package:flutter_social_firebase_auth/firebase_options.dart';
 import 'package:flutter_social_firebase_auth/widgets/google_sign_in_button/google_sign_in_button.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-const List<String> scopes = <String>[
-  'email',
-  'OpenID',
-  'perfil'
-];
+const List<String> scopes = <String>['email', 'OpenID', 'perfil'];
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,22 +42,27 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   GoogleSignIn googleSignIn = GoogleSignIn();
+  GoogleSignInAccount? _currentUser;
 
   @override
   void initState() {
     super.initState();
-    googleSignIn.onCurrentUserChanged.listen((GoogleSignInAccount? account) async {
+    googleSignIn.onCurrentUserChanged
+        .listen((GoogleSignInAccount? account) async {
       if (kIsWeb && account != null) {
         await googleSignIn.canAccessScopes(scopes);
       }
+      print("onCurrentUserChanged: ${account}");
+      setState(() {
+        _currentUser = account;
+      });
     });
+
     googleSignIn.signInSilently();
   }
 
   Future<UserCredential?> _signInWithGoogle() async {
-
-    late GoogleSignInAccount? googleSignInAccount;
-
+    GoogleSignInAccount? googleSignInAccount;
     try {
       if (kIsWeb) {
         googleSignInAccount = await googleSignIn.signInSilently();
@@ -76,12 +77,18 @@ class _MyHomePageState extends State<MyHomePage> {
         idToken: authentication.idToken,
       );
 
+      setState(() {
+        _currentUser = googleSignInAccount;
+      });
+
       return await FirebaseAuth.instance.signInWithCredential(credential);
     } catch (error) {
       debugPrint('ERROR: $error');
     }
     return null;
   }
+
+  Future<void> _handleSignOut() => googleSignIn.disconnect();
 
   @override
   Widget build(BuildContext context) {
@@ -94,12 +101,31 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            buildSignInButton(
-              onPressed: () async {
-                UserCredential? user = await _signInWithGoogle();
-                print("user: ${user?.credential.toString()}");
-              },
-            )
+            _currentUser != null
+                ? Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          flex: 1,
+                          child: ListTile(
+                            leading: GoogleUserCircleAvatar(
+                              identity: _currentUser!,
+                            ),
+                            title: Text(_currentUser?.displayName ?? ''),
+                            subtitle: Text(_currentUser!.email),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _handleSignOut,
+                          icon: const Icon(Icons.logout),
+                        )
+                      ],
+                    ),
+                  )
+                : buildSignInButton(
+                    onPressed: _signInWithGoogle,
+                  ),
           ],
         ),
       ),

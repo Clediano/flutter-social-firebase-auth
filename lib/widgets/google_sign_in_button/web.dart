@@ -5,9 +5,11 @@ import 'stub.dart';
 
 Widget buildSignInButton({HandleSignInFn? onPressed}) {
   final config = web.GSIButtonConfiguration(
-    type: web.GSIButtonType.icon,
+    type: web.GSIButtonType.standard,
     shape: web.GSIButtonShape.pill,
     size: web.GSIButtonSize.large,
+    text: web.GSIButtonText.continueWith,
+    theme: web.GSIButtonTheme.outline,
   );
   return web.renderButton(configuration: config);
 }
