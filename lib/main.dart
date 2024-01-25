@@ -1,8 +1,16 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_social_firebase_auth/firebase_options.dart';
+import 'package:flutter_social_firebase_auth/widgets/google_sign_in_button/google_sign_in_button.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
+const List<String> scopes = <String>[
+  'email',
+  'OpenID',
+  'perfil'
+];
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,13 +45,31 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  GoogleSignIn googleSignIn = GoogleSignIn();
+
+  @override
+  void initState() {
+    super.initState();
+    googleSignIn.onCurrentUserChanged.listen((GoogleSignInAccount? account) async {
+      if (kIsWeb && account != null) {
+        await googleSignIn.canAccessScopes(scopes);
+      }
+    });
+    googleSignIn.signInSilently();
+  }
+
   Future<UserCredential?> _signInWithGoogle() async {
-    GoogleSignIn googleSignIn = GoogleSignIn();
+
+    late GoogleSignInAccount? googleSignInAccount;
 
     try {
-      GoogleSignInAccount? googleSignInAccount = await googleSignIn.signIn();
-
-      GoogleSignInAuthentication authentication = await googleSignInAccount!.authentication;
+      if (kIsWeb) {
+        googleSignInAccount = await googleSignIn.signInSilently();
+      } else {
+        googleSignInAccount = await googleSignIn.signIn();
+      }
+      GoogleSignInAuthentication authentication =
+          await googleSignInAccount!.authentication;
 
       final credential = GoogleAuthProvider.credential(
         accessToken: authentication.accessToken,
@@ -52,7 +78,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
       return await FirebaseAuth.instance.signInWithCredential(credential);
     } catch (error) {
-      debugPrint('ERROR: ' + error.toString());
+      debugPrint('ERROR: $error');
     }
     return null;
   }
@@ -68,13 +94,11 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            ElevatedButton.icon(
-              icon: const Icon(Icons.login),
+            buildSignInButton(
               onPressed: () async {
                 UserCredential? user = await _signInWithGoogle();
-                print(user?.credential);
+                print("user: ${user?.credential.toString()}");
               },
-              label: const Text('Sign in with Google'),
             )
           ],
         ),
